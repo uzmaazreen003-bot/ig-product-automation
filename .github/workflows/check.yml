@@ -1,0 +1,29 @@
+name: Check Instagram connection
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Test token on Meta Graph hosts
+        env:
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          IG_USER_ID: "17841425701964826"
+        run: |
+          if [ -z "$IG_ACCESS_TOKEN" ]; then
+            echo "ERROR: secret IG_ACCESS_TOKEN is empty or missing"
+            exit 1
+          fi
+          for host in graph.facebook.com graph.instagram.com; do
+            echo "== profile via $host =="
+            curl -s -G "https://$host/$IG_USER_ID" \
+              --data-urlencode "fields=username,account_type" \
+              --data-urlencode "access_token=$IG_ACCESS_TOKEN"
+            echo
+            echo "== publishing limit via $host =="
+            curl -s -G "https://$host/$IG_USER_ID/content_publishing_limit" \
+              --data-urlencode "access_token=$IG_ACCESS_TOKEN"
+            echo
+          done
