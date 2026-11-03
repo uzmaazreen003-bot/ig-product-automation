@@ -1,0 +1,21 @@
+{
+  "handle": "@uzmaazreen.studio",
+  "ig_user_id": "17841425701964826",
+  "store_url": "https://payhip.com/UzmaAzreenDigitalstudio",
+  "show_price": true,
+  "currency_symbol": "₹",
+  "video_method": "auto",
+  "ambient_audio": null,
+  "schedule_ist": {
+    "Mon": "reel",
+    "Tue": "carousel",
+    "Wed": "reel",
+    "Thu": "carousel",
+    "Fri": "reel",
+    "Sat": "reel",
+    "Sun": "carousel"
+  },
+  "min_gap_products": 8,
+  "base_hashtags": ["#uzmaazreenstudio", "#digitalproducts", "#instantdownload", "#printablepdf"],
+  "max_hashtags": 12
+}
