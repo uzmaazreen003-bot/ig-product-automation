@@ -15,7 +15,7 @@ import os
 import sys
 import tempfile
 
-from . import content, publish, render
+from . import content, publish, render, voice
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.environ.get("IG_DATA_DIR") or os.path.join(ROOT, "data")
@@ -66,6 +66,16 @@ def render_reel(product, script, pal, cover, cfg, stem, workdir):
         scenes.append(path)
         durs.append(SCENE_SECONDS[kind])
 
+    voice_clips, voice_note = None, "off"
+    if voice.enabled(cfg):
+        try:
+            voice_clips, chars = voice.make_clips(product, script, cfg, workdir, stem)
+            voice_note = f"on ({chars} characters)"
+        except voice.VoiceError as e:
+            voice_clips, voice_note = None, f"FAILED, silent Reel used: {e}"
+            print(f"[voice] {voice_note}")
+    clip_len = [voice.duration(p) for p in voice_clips] if voice_clips else None
+
     add(render.scene_hook(product, script["hook"], pal, cover, cfg), "hook", "s1")
     add(render.scene_cover(product, pal, cover, cfg), "cover", "s2")
     for i, item in enumerate(script["items"]):
@@ -74,7 +84,10 @@ def render_reel(product, script, pal, cover, cfg, stem, workdir):
     out = os.path.join(OUT, f"{stem}.mp4")
     ambient = cfg.get("ambient_audio")
     ambient = os.path.join(ROOT, ambient) if ambient else None
-    render.build_reel(scenes, durs, out, ambient=ambient)
+    if clip_len:
+        durs[:] = [max(d, c + 0.25 + 0.55) for d, c in zip(durs, clip_len)]
+    render.build_reel(scenes, durs, out, ambient=ambient, voice_clips=voice_clips)
+    print(f"[voice] {voice_note}; reel length {sum(durs):.1f}s")
     return [out]
 
 

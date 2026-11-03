@@ -332,8 +332,9 @@ FPS = 30
 FADE = 0.35
 
 
-def build_reel(scene_pngs, durations, out_path, ambient=None, workdir=None):
-    """Slow zoom on every scene + cross-fades. Audio: silent track, or a quiet natural-sound loop if provided."""
+def build_reel(scene_pngs, durations, out_path, ambient=None, workdir=None, voice_clips=None, voice_delay=0.25):
+    """Slow zoom on every scene + cross-fades. Audio: optional voice-over (one clip per scene), optional quiet
+    natural-sound loop, otherwise silence. No music is ever added."""
     assert len(scene_pngs) == len(durations) >= 2
     n = len(scene_pngs)
     cmd = ["ffmpeg", "-y", "-loglevel", "error"]
@@ -344,8 +345,12 @@ def build_reel(scene_pngs, durations, out_path, ambient=None, workdir=None):
         cmd += ["-stream_loop", "-1", "-i", ambient]
     else:
         cmd += ["-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=44100"]
-    audio_idx = n
-
+    bed_idx = n
+    voice_inputs = []
+    for i, vp in enumerate(voice_clips or []):
+        if vp:
+            cmd += ["-i", vp]
+            voice_inputs.append((n + 1 + len(voice_inputs), i))
     parts = []
     for i, dur in enumerate(durations):
         clip_len = dur + (FADE if i < n - 1 else 0)
@@ -365,7 +370,16 @@ def build_reel(scene_pngs, durations, out_path, ambient=None, workdir=None):
         out = f"x{i}"
         parts.append(f"[{last}][v{i}]xfade=transition=fade:duration={FADE}:offset={offset:.3f}[{out}]")
         last = out
-    cmd += ["-filter_complex", ";".join(parts), "-map", f"[{last}]", "-map", f"{audio_idx}:a"]
+    bed_vol = 0.35 if (ambient and os.path.exists(ambient)) else 1.0
+    parts.append(f"[{bed_idx}:a]aformat=sample_rates=44100:channel_layouts=stereo,volume={bed_vol}[bed]")
+    labels = ["[bed]"]
+    starts = [sum(durations[:i]) for i in range(len(durations))]
+    for k, (idx, scene_i) in enumerate(voice_inputs):
+        ms = int(round((starts[scene_i] + voice_delay) * 1000))
+        parts.append(f"[{idx}:a]aformat=sample_rates=44100:channel_layouts=stereo,adelay={ms}|{ms}[vo{k}]")
+        labels.append(f"[vo{k}]")
+    parts.append("".join(labels) + f"amix=inputs={len(labels)}:duration=first:normalize=0,alimiter=limit=0.95[aout]")
+    cmd += ["-filter_complex", ";".join(parts), "-map", f"[{last}]", "-map", "[aout]"]
     cmd += [
         "-t", f"{total:.3f}",
         "-c:v", "libx264", "-preset", "veryfast", "-crf", "21", "-pix_fmt", "yuv420p", "-r", str(FPS),

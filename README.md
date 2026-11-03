@@ -43,3 +43,9 @@ then update the `IG_ACCESS_TOKEN` secret. History and schedule are untouched.
   `data/history.json`, so the repo stays active.
 - Optional natural-sound background: put an mp3 at `assets/ambient.mp3` and set `"ambient_audio": "assets/ambient.mp3"` in config. Default is silent.
 - Local tests: `python -m tests.test_publish`, `python -m tests.test_rotation`, `python -m tests.test_e2e` (they use a fake Instagram server).
+
+## Voice-over (ElevenLabs)
+Set `voice.voice_id` in `data/config.json` to your ElevenLabs voice ID and add the secret `ELEVENLABS_API_KEY`.
+The voice reads only the hook, product title/subtitle, the 3 points and the price/CTA line from `data/products.json`.
+Roughly 350-450 characters per Reel. If the key/credits are missing the Reel is built silent and the run log says why.
+Set `"enabled": false` to switch the voice off. No music is ever added.
