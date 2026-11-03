@@ -1,0 +1,113 @@
+name: Post to Instagram
+
+on:
+  schedule:
+    - cron: "30 13 * * *"   # 7:00 PM IST - main run
+    - cron: "30 15 * * *"   # 9:00 PM IST - backup run (does nothing if today's post already went out)
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run: build the post and show it, but do NOT publish"
+        type: boolean
+        default: true
+      format:
+        description: "Format"
+        type: choice
+        options: [auto, reel, carousel]
+        default: auto
+      product:
+        description: "Product ID (optional, e.g. 6fTMQ)"
+        type: string
+        default: ""
+      force:
+        description: "Force: allow another post even if one went out today"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: instagram-post
+  cancel-in-progress: false
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install ffmpeg and Python packages
+        run: |
+          command -v ffmpeg >/dev/null || (sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg)
+          pip install -r requirements.txt
+
+      - name: Plan and render today's post
+        id: plan
+        env:
+          INPUT_FORMAT: ${{ inputs.format || 'auto' }}
+          INPUT_PRODUCT: ${{ inputs.product }}
+          INPUT_FORCE: ${{ inputs.force }}
+          MEDIA_BASE_URL: https://raw.githubusercontent.com/${{ github.repository }}/media
+        run: |
+          args=(plan --format "$INPUT_FORMAT")
+          if [ -n "$INPUT_PRODUCT" ]; then args+=(--product "$INPUT_PRODUCT"); fi
+          if [ "$INPUT_FORCE" = "true" ]; then args+=(--force); fi
+          python -m src.main "${args[@]}"
+
+      - name: Save the generated post so you can look at it
+        if: ${{ always() && steps.plan.outputs.skip == 'false' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-post
+          path: |
+            out/*.mp4
+            out/*.jpg
+            out/caption.txt
+            out/plan.json
+          retention-days: 14
+
+      - name: Publish media files (temporary public copy for Instagram)
+        if: ${{ steps.plan.outputs.skip == 'false' && inputs.dry_run != true }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: bash scripts/push_media.sh
+
+      - name: Publish to Instagram
+        id: publish
+        if: ${{ steps.plan.outputs.skip == 'false' && inputs.dry_run != true }}
+        env:
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+        run: python -m src.main publish
+
+      - name: Save post history
+        if: ${{ !cancelled() && steps.plan.outputs.skip == 'false' && inputs.dry_run != true }}
+        run: |
+          git config user.name "ig-automation-bot"
+          git config user.email "ig-automation-bot@users.noreply.github.com"
+          git add data/history.json
+          if git diff --cached --quiet; then echo "history unchanged"; exit 0; fi
+          git commit -m "Record Instagram post $(date -u +%F)"
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+
+      - name: Open an issue if something failed
+        if: ${{ failure() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo "The automatic Instagram post did not go out."
+            echo
+            echo "Run log: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            echo
+            if [ -f out/error.txt ]; then cat out/error.txt; fi
+          } > issue_body.md
+          gh issue create --title "Instagram post failed ($(date -u +%F))" --body-file issue_body.md
