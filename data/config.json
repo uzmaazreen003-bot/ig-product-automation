@@ -25,10 +25,11 @@
   "max_hashtags": 12,
   "voice": {
     "enabled": true,
-    "provider": "elevenlabs",
-    "voice_id": "06llJPvI62CjqSWOX9Gp",
-    "model_id": "eleven_multilingual_v2",
+    "provider": "edge",
+    "voice": "en-IN-NeerjaNeural",
+    "rate": "+0%",
     "price_word": "rupees",
     "cta": "Link in bio."
-  }
+  },
+  "reel_style": "motion"
 }

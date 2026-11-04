@@ -19,7 +19,9 @@ class VoiceError(Exception):
 
 def enabled(cfg) -> bool:
     v = cfg.get("voice") or {}
-    return bool(v.get("enabled") and v.get("voice_id"))
+    if not v.get("enabled"):
+        return False
+    return bool(v.get("voice_id")) if v.get("provider", "edge") == "elevenlabs" else True
 
 
 def speech_lines(product, script, cfg):
@@ -37,7 +39,34 @@ def speech_lines(product, script, cfg):
     return [l.replace("’", "'").replace("—", ",").strip() for l in lines]
 
 
+def synth_edge(text, cfg, out_path):
+    """Free Microsoft neural voices through the edge-tts package (no key, no account)."""
+    import asyncio
+    try:
+        import edge_tts
+    except ImportError:
+        raise VoiceError("edge-tts is not installed")
+    v = cfg["voice"]
+
+    async def go():
+        comm = edge_tts.Communicate(text, v.get("voice", "en-IN-NeerjaNeural"), rate=v.get("rate", "+0%"))
+        await asyncio.wait_for(comm.save(out_path), timeout=60)
+
+    last = None
+    for _ in range(3):
+        try:
+            asyncio.run(go())
+            if os.path.exists(out_path) and os.path.getsize(out_path) > 500:
+                return out_path
+            last = "empty audio"
+        except Exception as e:  # network / service refusals
+            last = f"{e.__class__.__name__}: {str(e)[:150]}"
+    raise VoiceError(f"edge-tts failed: {last}")
+
+
 def synth(text, cfg, out_path):
+    if (cfg.get("voice") or {}).get("provider", "edge") == "edge":
+        return synth_edge(text, cfg, out_path)
     key = os.environ.get("ELEVENLABS_API_KEY")
     if not key:
         raise VoiceError("ELEVENLABS_API_KEY is not set")

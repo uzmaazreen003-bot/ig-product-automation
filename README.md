@@ -49,3 +49,7 @@ Set `voice.voice_id` in `data/config.json` to your ElevenLabs voice ID and add t
 The voice reads only the hook, product title/subtitle, the 3 points and the price/CTA line from `data/products.json`.
 Roughly 350-450 characters per Reel. If the key/credits are missing the Reel is built silent and the run log says why.
 Set `"enabled": false` to switch the voice off. No music is ever added.
+
+## Reel style
+`"reel_style": "motion"` in `data/config.json` gives pop-up 2D-motion Reels (bouncing text, pop/tick/whoosh sound effects, no music).
+`"classic"` gives the calmer cross-fade style. Voice-over uses free Microsoft neural voices via edge-tts (`voice.provider: "edge"`, voice `en-IN-NeerjaNeural`); if it is unreachable the Reel is made with sound effects only.

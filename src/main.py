@@ -15,7 +15,7 @@ import os
 import sys
 import tempfile
 
-from . import content, publish, render, voice
+from . import content, motion, publish, render, voice
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.environ.get("IG_DATA_DIR") or os.path.join(ROOT, "data")
@@ -58,6 +58,44 @@ def media_url(filename):
 # ---------------------------------------------------------------- plan
 
 def render_reel(product, script, pal, cover, cfg, stem, workdir):
+    out = os.path.join(OUT, f"{stem}.mp4")
+    if cfg.get("reel_style", "motion") == "motion":
+        return render_reel_motion(product, script, pal, cover, cfg, stem, workdir, out)
+    return render_reel_classic(product, script, pal, cover, cfg, stem, workdir, out)
+
+
+def _voice(product, script, cfg, workdir, stem):
+    if not voice.enabled(cfg):
+        return None, None, "off"
+    try:
+        clips, chars = voice.make_clips(product, script, cfg, workdir, stem)
+        return clips, [voice.duration(p) for p in clips], f"on ({chars} characters)"
+    except voice.VoiceError as e:
+        print(f"[voice] FAILED, Reel made without voice: {e}")
+        return None, None, f"FAILED: {e}"
+
+
+def render_reel_motion(product, script, pal, cover, cfg, stem, workdir, out):
+    scenes = [motion.scene_hook(product, script["hook"], pal, cover, cfg), motion.scene_cover(product, pal, cover, cfg)]
+    for i, item in enumerate(script["items"]):
+        scenes.append(motion.scene_point(product, script["header"], item, i, len(script["items"]), pal, cover, cfg))
+    scenes.append(motion.scene_cta(product, pal, cover, cfg))
+    kinds = ["hook", "cover"] + ["point"] * len(script["items"]) + ["cta"]
+    durs = [SCENE_SECONDS[k] + 0.2 for k in kinds]
+    clips, clip_len, note = _voice(product, script, cfg, workdir, stem)
+    if clip_len:
+        durs = [max(d, c + 0.3 + 0.6) for d, c in zip(durs, clip_len)]
+    total = sum(durs)
+    starts = [sum(durs[:i]) for i in range(len(durs))]
+    vo = [(starts[i] + 0.3, p) for i, p in enumerate(clips)] if clips else []
+    wav = os.path.join(workdir, f"{stem}-audio.wav")
+    motion.build_audio(motion.events_for(scenes, durs), vo, total, wav)
+    motion.build_reel(scenes, durs, out, wav)
+    print(f"[reel] motion style; voice {note}; length {total:.1f}s")
+    return [out]
+
+
+def render_reel_classic(product, script, pal, cover, cfg, stem, workdir, out):
     scenes, durs = [], []
 
     def add(img, kind, name):
@@ -66,28 +104,18 @@ def render_reel(product, script, pal, cover, cfg, stem, workdir):
         scenes.append(path)
         durs.append(SCENE_SECONDS[kind])
 
-    voice_clips, voice_note = None, "off"
-    if voice.enabled(cfg):
-        try:
-            voice_clips, chars = voice.make_clips(product, script, cfg, workdir, stem)
-            voice_note = f"on ({chars} characters)"
-        except voice.VoiceError as e:
-            voice_clips, voice_note = None, f"FAILED, silent Reel used: {e}"
-            print(f"[voice] {voice_note}")
-    clip_len = [voice.duration(p) for p in voice_clips] if voice_clips else None
-
+    voice_clips, clip_len, voice_note = _voice(product, script, cfg, workdir, stem)
     add(render.scene_hook(product, script["hook"], pal, cover, cfg), "hook", "s1")
     add(render.scene_cover(product, pal, cover, cfg), "cover", "s2")
     for i, item in enumerate(script["items"]):
         add(render.scene_point(product, script["header"], item, i, len(script["items"]), pal, cover, cfg), "point", f"s{3 + i}")
     add(render.scene_cta(product, pal, cover, cfg), "cta", "s9")
-    out = os.path.join(OUT, f"{stem}.mp4")
     ambient = cfg.get("ambient_audio")
     ambient = os.path.join(ROOT, ambient) if ambient else None
     if clip_len:
         durs[:] = [max(d, c + 0.25 + 0.55) for d, c in zip(durs, clip_len)]
     render.build_reel(scenes, durs, out, ambient=ambient, voice_clips=voice_clips)
-    print(f"[voice] {voice_note}; reel length {sum(durs):.1f}s")
+    print(f"[reel] classic style; voice {voice_note}; length {sum(durs):.1f}s")
     return [out]
 
 

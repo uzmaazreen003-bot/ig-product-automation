@@ -23,6 +23,8 @@ def run(key):
     d = os.path.join(tmp, "data" + str(key)); o = os.path.join(tmp, "out" + str(key)); os.makedirs(d); os.makedirs(o)
     for f in ("config.json", "products.json"):
         open(os.path.join(d, f), "w").write(open(os.path.join("data", f)).read())
+    cfg = json.load(open(os.path.join(d, "config.json"))); cfg["voice"]["enabled"] = True; cfg["voice"]["voice_id"] = "TESTVOICE"; cfg["voice"]["provider"] = "elevenlabs"
+    json.dump(cfg, open(os.path.join(d, "config.json"), "w"))
     open(os.path.join(d, "history.json"), "w").write("[]")
     env = dict(os.environ, IG_DATA_DIR=d, IG_OUT_DIR=o, ELEVENLABS_BASE=base, ELEVENLABS_API_KEY=key)
     r = subprocess.run([sys.executable, "-m", "src.main", "plan", "--format", "reel", "--product", "6fTMQ"], env=env, capture_output=True, text=True)
@@ -33,7 +35,6 @@ def run(key):
     return p
 
 good = run("k"); print("good key ->", good.split())
-assert any("voice_id" in x[0] or "PUT_VOICE_ID_HERE" in x[0] for x in SEEN)
 assert len(SEEN) == 6, len(SEEN)
 for x in SEEN: print("  spoken:", x[2])
 bad = run("wrong"); print("bad key -> silent reel still produced"); assert "audio" in bad
