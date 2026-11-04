@@ -2,8 +2,9 @@ name: Post to Instagram
 
 on:
   schedule:
-    - cron: "30 13 * * *"   # 7:00 PM IST - main run
-    - cron: "30 15 * * *"   # 9:00 PM IST - backup run (does nothing if today's post already went out)
+    - cron: "30 13 * * *"   # 7:00 PM IST - Reel
+    - cron: "0 15 * * *"    # 8:30 PM IST - Carousel
+    - cron: "30 16 * * *"   # 10:00 PM IST - backup (does nothing if both posts already went out)
   workflow_dispatch:
     inputs:
       dry_run:
