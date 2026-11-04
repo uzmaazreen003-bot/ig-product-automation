@@ -53,3 +53,7 @@ Set `"enabled": false` to switch the voice off. No music is ever added.
 ## Reel style
 `"reel_style": "motion"` in `data/config.json` gives pop-up 2D-motion Reels (bouncing text, pop/tick/whoosh sound effects, no music).
 `"classic"` gives the calmer cross-fade style. Voice-over uses free Microsoft neural voices via edge-tts (`voice.provider: "edge"`, voice `en-IN-NeerjaNeural`); if it is unreachable the Reel is made with sound effects only.
+
+## Two posts a day
+`daily_slots` in `data/config.json`: a Reel at 19:00 IST and a Carousel at 20:30 IST (different products, because the first one is already in history).
+Cron runs at 19:00, 20:30 and a 22:00 backup; a missed slot is made up by the next run. Remove `daily_slots` to go back to one post per day (`schedule_ist`).

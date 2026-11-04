@@ -7,6 +7,8 @@ os.environ.update(GRAPH_BASE=base, RUPLOAD_BASE=base, PUBLISH_POLL_SLEEP="0.05",
                   GITHUB_OUTPUT="/tmp/e2e/gh_output.txt")
 from src import main as m
 hist = lambda: json.load(open("/tmp/e2e/data/history.json"))
+_c = json.load(open("/tmp/e2e/data/config.json")); _c.pop("daily_slots", None)   # legacy one-post-a-day mode here
+json.dump(_c, open("/tmp/e2e/data/config.json", "w"))   # (slot logic: tests/test_slots.py)
 
 assert m.main(["plan", "--format", "reel"]) == 0
 assert m.main(["publish"]) == 0

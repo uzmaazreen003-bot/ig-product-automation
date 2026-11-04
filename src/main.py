@@ -141,12 +141,24 @@ def cmd_plan(args):
     now = content.now_ist()
     today = now.strftime("%Y-%m-%d")
 
-    if not args.force and content.already_posted_on(history, today):
-        print(f"[plan] already published on {today} (IST); nothing to do")
-        gh_output(skip="true")
-        return 0
-
-    fmt = args.format if args.format != "auto" else content.format_for(now, cfg)
+    slots = cfg.get("daily_slots")
+    if slots:
+        if args.format != "auto":
+            fmt = args.format                      # manual run: you chose the format
+        elif args.force:
+            fmt = slots[0]["format"]
+        else:
+            fmt = content.due_format(history, cfg, now)
+            if not fmt:
+                print(f"[plan] nothing due right now ({now.strftime('%H:%M')} IST); all of today's posts are done or not yet due")
+                gh_output(skip="true")
+                return 0
+    else:
+        if not args.force and content.already_posted_on(history, today):
+            print(f"[plan] already published on {today} (IST); nothing to do")
+            gh_output(skip="true")
+            return 0
+        fmt = args.format if args.format != "auto" else content.format_for(now, cfg)
     product = content.pick_product(products, history, cfg, args.product or None)
     angle = content.pick_angle(product, fmt, history)
     nth = content.times_promoted(product, history)

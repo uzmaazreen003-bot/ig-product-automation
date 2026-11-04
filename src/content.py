@@ -28,6 +28,25 @@ def already_posted_on(history, date_str: str) -> bool:
     return any(h.get("date") == date_str for h in published_entries(history))
 
 
+def due_format(history, cfg, now):
+    """With cfg['daily_slots'] (e.g. reel 19:00 + carousel 20:30): the format whose slot is due and not yet
+    published today, or None. Slots are filled in order, so a missed early slot is made up by the next run."""
+    slots = cfg.get("daily_slots") or []
+    today = now.strftime("%Y-%m-%d")
+    done = {}
+    for h in published_entries(history):
+        if h.get("date") == today:
+            done[h.get("format")] = done.get(h.get("format"), 0) + 1
+    hm = now.strftime("%H:%M")
+    for slot in slots:
+        f = slot["format"]
+        if done.get(f, 0) > 0:
+            done[f] -= 1
+            continue
+        return f if slot["time"] <= hm else None
+    return None
+
+
 def pick_product(products, history, cfg, forced_id: str | None = None):
     if forced_id:
         for p in products:

@@ -31,5 +31,15 @@
     "price_word": "rupees",
     "cta": "Link in bio."
   },
-  "reel_style": "motion"
+  "reel_style": "motion",
+  "daily_slots": [
+    {
+      "time": "19:00",
+      "format": "reel"
+    },
+    {
+      "time": "20:30",
+      "format": "carousel"
+    }
+  ]
 }
