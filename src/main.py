@@ -57,9 +57,16 @@ def media_url(filename):
 
 # ---------------------------------------------------------------- plan
 
-def render_reel(product, script, pal, cover, cfg, stem, workdir):
+def render_reel(product, script, pal, cover, cfg, stem, workdir, nth=0):
     out = os.path.join(OUT, f"{stem}.mp4")
-    if cfg.get("reel_style", "motion") == "motion":
+    if cfg.get("reel_style") == "studio":
+        try:
+            from . import reelstyle
+            reelstyle.make_reel(product, nth, cfg, cover, out, workdir)
+            return [out]
+        except Exception as exc:  # noqa: BLE001
+            print(f"[reel] studio style failed ({exc!r}); using the earlier motion style instead")
+    if cfg.get("reel_style", "motion") in ("motion", "studio"):
         return render_reel_motion(product, script, pal, cover, cfg, stem, workdir, out)
     return render_reel_classic(product, script, pal, cover, cfg, stem, workdir, out)
 
@@ -175,7 +182,7 @@ def cmd_plan(args):
     if fmt == "reel":
         script = content.reel_script(product, angle, nth)
         with tempfile.TemporaryDirectory() as tmp:
-            files = render_reel(product, script, pal, cover, cfg, stem, tmp)
+            files = render_reel(product, script, pal, cover, cfg, stem, tmp, nth)
     else:
         script = content.carousel_script(product, angle, nth)
         files = render_carousel(product, script, pal, cover, cfg, stem)
