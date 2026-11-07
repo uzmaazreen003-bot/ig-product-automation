@@ -562,19 +562,26 @@ def draw_cover(ctx, sc, t, tl):
     g = ease_out((t - R["t0"]) / 0.45)
     if g > 0:
         lines, sz = fit(ctx, str(v.get("title", "")), 31 * k, "Bold", tw, 4)
-        y = H * 0.30
+        y = H * (0.22 if v.get("btn") else 0.30)
         for j, ln in enumerate(lines):
             ctx.text(tx, y + j * sz * 1.18 + (1 - g) * 10 * k, ln, sz, mix(th.card, th.accent if j % 2 else th.ink, g), "Bold", "lm")
         sub = str(v.get("sub", ""))
         if sub:
-            sl, ssz = fit(ctx, sub, 19 * k, "Medium", tw, 4)
+            sl, ssz = fit(ctx, sub, 19 * k, "Medium", tw, 3)
             sy = y + len(lines) * sz * 1.18 + 10 * k
             for j, ln in enumerate(sl):
                 ctx.text(tx, sy + j * ssz * 1.25, ln, ssz, mix(th.card, th.muted, g), "Medium", "lm")
+    if v.get("btn"):
+        bp = pop(t, R["pr"] + 0.5, 0.45)
+        if bp > 0:
+            bw2, bh2 = min(tw, 210 * k) * min(bp, 1.06), 44 * k * min(bp, 1.06)
+            ctx.rr(tx + 10 * k, H * 0.86 - bh2 / 2, tx + 10 * k + bw2, H * 0.86 + bh2 / 2, bh2 / 2, fill=th.accent3)
+            if bp > 0.8:
+                ctx.text(tx + 10 * k + bw2 / 2, H * 0.86, str(v["btn"]), 21 * k, th.white, "Bold")
     pp = pop(t, R["pr"], 0.45)
     if pp > 0 and v.get("price"):
         bw, bh = 150 * k * min(pp, 1.08), 54 * k * min(pp, 1.08)
-        bx, by = tx + 10 * k, H * 0.84
+        bx, by = tx + 10 * k, H * 0.70 if v.get("btn") else H * 0.84
         ctx.rr(bx, by - bh / 2, bx + bw, by + bh / 2, bh / 2, fill=th.accent)
         if pp > 0.8:
             ctx.text(bx + bw / 2, by, str(v["price"]), 28 * k, th.white, "Bold")

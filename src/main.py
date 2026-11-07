@@ -188,6 +188,12 @@ def cmd_plan(args):
         files = render_carousel(product, script, pal, cover, cfg, stem)
 
     caption = content.build_caption(product, angle, script, cfg, fmt)
+    if fmt == "reel" and cfg.get("reel_style") == "studio":
+        try:
+            from . import reelstyle
+            caption = reelstyle.LAST.get("caption") or caption
+        except Exception:  # noqa: BLE001
+            pass
     plan = {
         "date": today,
         "time_ist": now.strftime("%H:%M"),

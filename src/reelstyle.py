@@ -174,7 +174,81 @@ def narrate(scenes, cfg, workdir):
 
 
 # ------------------------------------------------------------------ main entry
+LAST = {}
+PILL = {"thought": "overthinking", "wallet": "money", "leaf": "selfcare", "calendar": "mental_load"}
+
+
+def _hindi_reel(product, nth, cfg, cover, out_path, workdir):
+    import llm
+    import tts
+    sym = cfg.get("currency_symbol", "₹")
+    short = [_short(_item_text(p), 38) for p in product.get("points", [])[:3]]
+    pcfg = dict(products={product["id"]: dict(title=product["title"], tagline=product.get("subtitle", ""), benefits=short,
+                                              price=f"{sym}{product['price']}", link=product["url"])})
+    res = llm.make_ig_short(product, nth, pcfg)
+    scs = res["scenes"]
+    last = scs[-1]
+    if cover is not None:
+        last["v"] = dict(type="cover", title=product["title"], sub=_short(product.get("subtitle", ""), 90),
+                         price=f"{sym}{product['price']}", btn="Link in bio", _img=cover)
+    else:
+        last["v"]["btn_text"] = "Link in bio"
+        last["v"]["badge"] = "PDF · instant download"
+    _, main = theme_for(product)
+    palette = common.PALETTE_ORDER[sum(ord(c) for c in product["id"]) % len(common.PALETTE_ORDER)]
+    plan = dict(format="short", palette=palette, pillar=PILL.get(main, "product"), link_text="Link in bio",
+                pill_text="Roz naye tips • Follow", scenes=scs)
+    hc = cfg.get("studio_hi", {})
+
+    def run(engine):
+        durs, evs = [], []
+        for i, sc in enumerate(scs):
+            path = os.path.join(workdir, f"h{engine}{i}.mp3")
+            if os.environ.get("STUDIO_FAKE_TTS"):
+                path = path.replace(".mp3", ".wav")
+                evs.append(_fake(sc["hi"], path))
+            elif engine == "gemini":
+                evs.append(tts.synth_gemini(sc["hi"], hc.get("gemini_voice", "Leda"), hc.get("gemini_tts_models", ["gemini-3.1-flash-tts-preview", "gemini-2.5-flash-preview-tts"]),
+                                            hc["voice_style"], path))
+                time.sleep(6)
+            else:
+                evs.append(tts.synth(sc["hi"], hc.get("edge_voice", "hi-IN-SwaraNeural"), hc.get("edge_rate", "+0%"), path))
+                time.sleep(0.3)
+            sc["audio"] = path
+            durs.append(tts.duration(path))
+        return durs, evs
+
+    try:
+        durs, evs = run("gemini")
+    except Exception as exc:  # noqa: BLE001
+        print(f"[reel] Gemini voice failed ({exc}); using the edge voice for the WHOLE reel")
+        durs, evs = run("edge")
+    voice_items, events = timeline.build(plan, durs, evs)
+    wav = os.path.join(workdir, "mix.wav")
+    sfx.mix_audio(voice_items, events, plan["total"], wav)
+    srender.render_video(plan, cfg, wav, out_path)
+    from . import content
+    short_url = product["url"].replace("https://", "")
+    lines = [scs[0]["en"], "", product["title"] + (f": {product['subtitle']}" if product.get("subtitle") else ""), ""]
+    if cfg.get("show_price", True):
+        lines.append("🛒 " + " · ".join(x for x in [f"{sym}{product['price']}", product.get("meta")] if x))
+    lines.append(f"🔗 Link in bio · {short_url}")
+    if product.get("disclaimer"):
+        lines += ["", product["disclaimer"]]
+    lines += ["", " ".join(content.clean_hashtags(product.get("tags", []), cfg))]
+    LAST["caption"] = "\n".join(lines)[:2150]
+    print(f"[reel] studio style (Hindi tips + product pitch); palette {palette}; length {plan['total']:.1f}s; {len(scs)} scenes")
+    return out_path
+
+
 def make_reel(product, nth, cfg, cover, out_path, workdir):
+    LAST.clear()
+    if (cfg.get("studio_hi") or {}).get("enabled") and os.environ.get("GEMINI_API_KEY"):
+        try:
+            return _hindi_reel(product, nth, cfg, cover, out_path, workdir)
+        except Exception as exc:  # noqa: BLE001
+            print(f"[reel] Hindi tips style failed ({exc!r}); using the English product Reel instead")
+            LAST.clear()
     scs = build_scenes(product, nth, cfg, cover)
     palette = common.PALETTE_ORDER[sum(ord(c) for c in product["id"]) % len(common.PALETTE_ORDER)]
     plan = dict(format="short", palette=palette, pillar="product", link_text="Link in bio", pill_text="Follow for more guides", scenes=scs)

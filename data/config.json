@@ -41,5 +41,16 @@
       "time": "20:30",
       "format": "carousel"
     }
-  ]
+  ],
+  "studio_hi": {
+    "enabled": true,
+    "gemini_voice": "Leda",
+    "gemini_tts_models": [
+      "gemini-3.1-flash-tts-preview",
+      "gemini-2.5-flash-preview-tts"
+    ],
+    "voice_style": "Ek 25 saal ki friendly Indian didi ki tarah, natural conversational Hindi mein bolo: garm, khush, expressive, jaise dost ko dil se samjha rahi ho. Sawaal par awaaz upar, zaroori baat par zor, halke halke natural pauses, kabhi halki si hansi. Padhne jaisa bilkul nahi, bolne jaisa. Ye line mat bolna, sirf neeche ka text bolo",
+    "edge_voice": "hi-IN-SwaraNeural",
+    "edge_rate": "+0%"
+  }
 }

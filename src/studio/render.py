@@ -11,7 +11,7 @@ import scenes
 from common import Ctx, F, S2, Theme, build_bg, clamp, ease_back, mix, star_pts
 
 FPS = 24
-PILL_TEXT = {"money": "MONEY TIP", "overthinking": "MIND TIP", "selfcare": "SELF-CARE", "mental_load": "HOME TIP", "product": "DIGITAL GUIDE"}
+PILL_TEXT = {"money": "MONEY TIP", "overthinking": "MIND TIP", "selfcare": "SELF-CARE", "mental_load": "HOME TIP", "product": "EBOOK TIP"}
 VISEMES = ["wide", "small", "o", "e", "wide", "small", "e", "o"]
 
 
