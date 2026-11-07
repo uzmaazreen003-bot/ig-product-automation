@@ -58,6 +58,7 @@ jobs:
           INPUT_FORCE: ${{ inputs.force }}
           MEDIA_BASE_URL: https://raw.githubusercontent.com/${{ github.repository }}/media
           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           args=(plan --format "$INPUT_FORMAT")
           if [ -n "$INPUT_PRODUCT" ]; then args+=(--product "$INPUT_PRODUCT"); fi
